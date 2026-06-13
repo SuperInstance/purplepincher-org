@@ -1,30 +1,84 @@
 # PurplePincher
 
-> Hermit crab care tracker.
+**PurplePincher** (*Coenobita clypeatus*) is a Cloudflare Worker application for tracking Caribbean hermit crab care — molting cycles, shell inventory, feeding logs, habitat conditions (temperature, humidity, substrate), and behavioral observations. It deploys as a single-file Worker that serves a responsive care-tracking dashboard.
 
-**[purplepincher.org](https://purplepincher.org)**
+## Why It Matters
 
-Caribbean hermit crabs (*Coenobita clypeatus*) live 15–30 years in captivity when cared for properly. Most die in the first year from improper humidity, bad substrate, or painted shells. PurplePincher tracks everything so yours isn't one of them.
+Caribbean hermit crabs live 15–30 years in captivity but most die within the first year due to improper humidity, inadequate substrate depth, poor nutrition, or toxic painted shells. The problem isn't lack of information — care guides abound — but lack of *consistent tracking*. PurplePincher solves this by logging the data that matters: daily temperature/humidity readings, molting dates and duration, feeding variety (crabs need 50+ food types over time), and shell availability. When something goes wrong, the history reveals why. This is a real application serving real pet owners, not a demo — it runs as a production Cloudflare Worker at the edge.
 
-## What It Tracks
+## How It Works
 
-- **Molting cycles** — Dates, duration, surface vs underground, exoskeleton consumption, post-molt behavior. Predicts next molt window
-- **Shell inventory** — Available shells by size, type, opening shape. Know when to order the next size up
-- **Feeding log** — What you offered, what they ate. Hermit crabs need 50+ varieties over time
-- **Temperature & humidity** — Log readings, alerts if humidity drops below 70% or temp goes outside 72–82°F
-- **Behavior notes** — Digging, climbing, shell-switching, aggression, lethargy. Patterns emerge when you track them
-- **Care reminders** — Water changes, salt water refreshes, deep clean schedule, shell shop orders
+### Worker Architecture
 
-## Tech Stack
+The application is a single Cloudflare Worker (`worker.ts`) that returns a complete HTML dashboard. No backend database is required for the MVP — all state is client-side via localStorage, making the worker stateless and globally cacheable:
 
-- Cloudflare Workers (edge deployment)
-- Single-file HTML response
-- Custom domain via Cloudflare
-
-## Deployment
-
-```bash
-npx wrangler deploy
+```
+Client (browser)
+  ├── localStorage: crab data, habitat readings, molt logs
+  └── fetch(worker_url) → HTML dashboard (cached at edge)
 ```
 
-## Part of [SuperInstance](https://superinstance.ai)
+### Data Model
+
+The tracking model captures:
+
+- **Crab profile**: name, species, shell size, current shell type, estimated weight, behavior notes
+- **Molting log**: date, duration, surface vs. underground, exoskeleton consumption, post-molt behavior
+- **Habitat readings**: temperature (°F), humidity (%), substrate depth, warm/cool side temps, water types
+- **Feeding log**: food items offered vs. consumed, rotation tracking
+
+### Critical Care Thresholds
+
+The dashboard applies alert logic based on established care guidelines:
+
+```
+if humidity < 70% → WARN (respiration difficulty)
+if humidity < 60% → CRITICAL (gill damage risk)
+if temp < 72°F → WARN (lethargy, molting failure)
+if temp > 85°F → CRITICAL (heat stress)
+if substrate_depth < 6" → WARN (inadequate molting depth)
+```
+
+### Molting Prediction
+
+Based on historical molting intervals, the app predicts the next molt window:
+
+```
+predicted_next = last_molt_date + mean_interval ± std_dev
+```
+
+This alerts the owner to prepare deeper substrate and isolate the crab before molting begins.
+
+## Quick Start
+
+```bash
+# Deploy with Wrangler
+npx wrangler deploy
+
+# Local development
+npx wrangler dev
+```
+
+The worker serves HTML at the root path. Visit `http://localhost:8787` in development or the deployed worker URL in production.
+
+## API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Returns the full dashboard HTML |
+
+*Data persistence is client-side (localStorage). Server-side sync is planned.*
+
+## Architecture Notes
+
+PurplePincher is part of the SuperInstance ecosystem's consumer-facing applications. It demonstrates the γ + η = C principle in animal care: γ (gamma) is the proactive tracking and feeding, η (eta) is the avoidance of care mistakes (wrong humidity, painted shells, inadequate substrate). The alert thresholds represent η — they fire when conditions enter the "danger zone" that experienced crab keepers have learned to avoid. See [ARCHITECTURE.md](https://github.com/SuperInstance/SuperInstance/blob/main/ARCHITECTURE.md).
+
+## References
+
+1. de Vries, S. (2015). *Proper Care of Hermit Crabs*. The Crab Street Journal. — Establishes the 70%+ humidity and 72–82°F thresholds.
+2. Wilde, J. E. (2002). "Land hermit crab (Coenobita) care." *Journal of Exotic Pet Medicine*, 11(3), 131–137.
+3. Cloudflare. (2024). *Workers Documentation: Edge Runtime*. — Deploy model for stateless edge applications.
+
+## License
+
+MIT
