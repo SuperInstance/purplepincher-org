@@ -79,6 +79,16 @@ PurplePincher is part of the SuperInstance ecosystem's consumer-facing applicati
 2. Wilde, J. E. (2002). "Land hermit crab (Coenobita) care." *Journal of Exotic Pet Medicine*, 11(3), 131–137.
 3. Cloudflare. (2024). *Workers Documentation: Edge Runtime*. — Deploy model for stateless edge applications.
 
+### Worker Deployment Model
+
+The worker is a single file (`worker.ts`) deployed to Cloudflare's edge network. This means:
+- **Zero cold starts**: Workers initialize in <5ms
+- **Global distribution**: Served from 300+ edge locations
+- **No server management**: Scale to millions of requests automatically
+- **Free tier**: 100K requests/day at no cost
+
+The HTML dashboard is generated programmatically (template literal in TypeScript), keeping the deployment artifact to a single file. This eliminates build steps and asset pipelines.
+
 ## License
 
 MIT
